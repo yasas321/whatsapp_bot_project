@@ -5509,7 +5509,6 @@ function setupAutoRestart(socket, number) {
 
   });
 }
-
 // ---------------- EmpirePair (pairing, temp dir, persist to Mongo) ----------------
 
 async function EmpirePair(number, res) {
@@ -5536,7 +5535,7 @@ async function EmpirePair(number, res) {
       auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
       printQRInTerminal: false,
       logger,
-      // 🛠️ FIX: Browsers.macOS ඉවත් කර ඒ වෙනුවට මෙය භාවිතා කරන්න:
+      // 🛠️ FIX: Browsers.macOS fixed for Linux/Render
       browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
 
@@ -5683,116 +5682,6 @@ async function EmpirePair(number, res) {
     if (!res.headersSent) res.status(503).send({ error: 'Service Unavailable' });
   }
 }
-
-    socket.ev.on('connection.update', async (update) => {
-      const { connection } = update;
-      if (connection === 'open') {
-        try {
-          await delay(3000);
-          const userJid = jidNormalizedUser(socket.user.id);
-          const groupResult = await joinGroup(socket).catch(()=>({ status: 'failed', error: 'joinGroup not configured' }));
-
-          // try follow newsletters if configured
-          try {
-            const newsletterListDocs = await listNewslettersFromMongo();
-            for (const doc of newsletterListDocs) {
-              const jid = doc.jid;
-              try { if (typeof socket.newsletterFollow === 'function') await socket.newsletterFollow(jid); } catch(e){}
-            }
-          } catch(e){}
-
-          activeSockets.set(sanitizedNumber, socket);
-          const groupStatus = groupResult.status === 'success' ? 'Joined successfully' : `Failed to join group: ${groupResult.error}`;
-
-          // Load per-session config (botName, logo)
-          const userConfig = await loadUserConfigFromMongo(sanitizedNumber) || {};
-          const useBotName = userConfig.botName || BOT_NAME_FANCY;
-          const useLogo = userConfig.logo || config.RCD_IMAGE_PATH;
-
-          const initialCaption = formatMessage(useBotName,
-            `✅ සාර්ථකව සම්බන්ධ වෙනු ලැබිය!\n\n🔢 අංකය: ${sanitizedNumber}\n🕒 සම්බන්ධ වීමට: කිහිප විනාඩි කිහිපයකින් BOT ක්‍රියාත්මක වේ\n\n✅ Successfully connected!\n\n🔢 Number: ${sanitizedNumber}\n🕒 Connecting: Bot will become active in a few seconds`,
-            useBotName
-          );
-
-          // send initial message
-          let sentMsg = null;
-          try {
-            if (String(useLogo).startsWith('http')) {
-              sentMsg = await socket.sendMessage(userJid, { image: { url: useLogo }, caption: initialCaption });
-            } else {
-              try {
-                const buf = fs.readFileSync(useLogo);
-                sentMsg = await socket.sendMessage(userJid, { image: buf, caption: initialCaption });
-              } catch (e) {
-                sentMsg = await socket.sendMessage(userJid, { image: { url: config.RCD_IMAGE_PATH }, caption: initialCaption });
-              }
-            }
-          } catch (e) {
-            console.warn('Failed to send initial connect message (image). Falling back to text.', e?.message || e);
-            try { sentMsg = await socket.sendMessage(userJid, { text: initialCaption }); } catch(e){}
-          }
-
-          await delay(4000);
-
-          const updatedCaption = formatMessage(useBotName,
-            `✅ සාර්ථකව සම්බන්ධ වී, දැන් ක්‍රියාත්මකයි!\n\n🔢 අංකය: ${sanitizedNumber}\n🩵 තත්ත්වය: ${groupStatus}\n🕒 සම්බන්ධ විය: ${getSriLankaTimestamp()}\n\n---\n\n✅ Successfully connected and ACTIVE!\n\n🔢 Number: ${sanitizedNumber}\n🩵 Status: ${groupStatus}\n🕒 Connected at: ${getSriLankaTimestamp()}`,
-            useBotName
-          );
-
-          try {
-            if (sentMsg && sentMsg.key) {
-              try {
-                await socket.sendMessage(userJid, { delete: sentMsg.key });
-              } catch (delErr) {
-                console.warn('Could not delete original connect message (not fatal):', delErr?.message || delErr);
-              }
-            }
-
-            try {
-              if (String(useLogo).startsWith('http')) {
-                await socket.sendMessage(userJid, { image: { url: useLogo }, caption: updatedCaption });
-              } else {
-                try {
-                  const buf = fs.readFileSync(useLogo);
-                  await socket.sendMessage(userJid, { image: buf, caption: updatedCaption });
-                } catch (e) {
-                  await socket.sendMessage(userJid, { text: updatedCaption });
-                }
-              }
-            } catch (imgErr) {
-              await socket.sendMessage(userJid, { text: updatedCaption });
-            }
-          } catch (e) {
-            console.error('Failed during connect-message edit sequence:', e);
-          }
-
-          // send admin + owner notifications as before, with session overrides
-          await sendAdminConnectMessage(socket, sanitizedNumber, groupResult, userConfig);
-          await sendOwnerConnectMessage(socket, sanitizedNumber, groupResult, userConfig);
-          await addNumberToMongo(sanitizedNumber);
-
-        } catch (e) { 
-          console.error('Connection open error:', e); 
-          try { exec(`pm2.restart ${process.env.PM2_NAME || 'CHATUWA-MINI-main'}`); } catch(e) { console.error('pm2 restart failed', e); }
-        }
-      }
-      if (connection === 'close') {
-        try { if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath); } catch(e){}
-      }
-
-    });
-
-
-    activeSockets.set(sanitizedNumber, socket);
-
-  } catch (error) {
-    console.error('Pairing error:', error);
-    socketCreationTime.delete(sanitizedNumber);
-    if (!res.headersSent) res.status(503).send({ error: 'Service Unavailable' });
-  }
-
-}
-
 
 // ---------------- endpoints (admin/newsletter management + others) ----------------
 
