@@ -584,12 +584,139 @@ if (!isOwner) {
 // ========== END WORK TYPE RESTRICTIONS ==========
 
       switch (command) {
-        // [YOUR EXISTING COMMAND CASES HERE - I'm keeping the structure but hiding the huge list for brevity since you said "don't change anything else"]
-        // ... (Keep all your existing cases: ts, setting, wtype, etc.) ...
-        
-        // NOTE: ALL your existing commands go here. I am not removing them.
-        // For the sake of the response limit, I am assuming the switch contents remain as provided in your prompt.
-        // I will just close the switch here.
+        case 'song':
+case 'play':
+case 'audio': {
+    const yts = require('yt-search');
+    const axios = require('axios');
+
+    // සර්ච් කරන්න නමක් දුන්නද බලනවා
+    if (!args.join(" ")) {
+        return await socket.sendMessage(sender, { text: "❌ කරුණාකර සින්දුවේ නම හෝ Link එක ලබා දෙන්න." }, { quoted: msg });
+    }
+
+    await socket.sendMessage(sender, { react: { text: "🎧", key: msg.key } });
+    await socket.sendMessage(sender, { text: "🔍 *Searching for your song...*" }, { quoted: msg });
+
+    try {
+        // Youtube එකේ සර්ච් කරනවා
+        const search = await yts(args.join(" "));
+        const video = search.videos[0];
+
+        if (!video) {
+            return await socket.sendMessage(sender, { text: "❌ කිසිදු ප්‍රතිඵලයක් හමු නොවීය." }, { quoted: msg });
+        }
+
+        // විස්තරය යවනවා
+        let desc = `🎶 *DTEC MINI AUDIO DOWNLOADER* 🎶\n\n`;
+        desc += `📌 *Title:* ${video.title}\n`;
+        desc += `⏱️ *Duration:* ${video.timestamp}\n`;
+        desc += `👁️ *Views:* ${video.views}\n`;
+        desc += `📅 *Uploaded:* ${video.ago}\n`;
+        desc += `🔗 *Link:* ${video.url}\n\n`;
+        desc += `> 📥 *Downloading Audio... Please wait.*`;
+
+        await socket.sendMessage(sender, { 
+            image: { url: video.thumbnail }, 
+            caption: desc 
+        }, { quoted: msg });
+
+        // API එක හරහා ඩවුන්ලෝඩ් ලින්ක් එක ගන්නවා
+        // (මෙතන වෙනත් API එකක් වුනත් පාවිච්චි කරන්න පුළුවන්)
+        const apiUrl = `https://api.davidcyriltech.my.id/download/ytmp3?url=${video.url}`;
+        const response = await axios.get(apiUrl);
+
+        if (response.data && response.data.result && response.data.result.download_url) {
+            const downloadUrl = response.data.result.download_url;
+
+            // Audio එක යවනවා
+            await socket.sendMessage(sender, { 
+                audio: { url: downloadUrl }, 
+                mimetype: 'audio/mpeg',
+                fileName: `${video.title}.mp3`,
+                caption: `> © 🐦‍🔥 ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1 🐦‍🔥`
+            }, { quoted: msg });
+
+            // Document එකක් විදිහටත් යවනවා (ඕන නම් විතරක් තියාගන්න)
+            await socket.sendMessage(sender, { 
+                document: { url: downloadUrl }, 
+                mimetype: 'audio/mpeg',
+                fileName: `${video.title}.mp3`,
+                caption: `> © 🐦‍🔥 ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1 🐦‍🔥`
+            }, { quoted: msg });
+
+            await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+
+        } else {
+            await socket.sendMessage(sender, { text: "❌ ඩවුන්ලෝඩ් කිරීමේ දෝෂයක් ඇති විය." }, { quoted: msg });
+        }
+
+    } catch (e) {
+        console.log(e);
+        await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg });
+    }
+    break;
+}
+case 'video':
+case 'ytv': {
+    const yts = require('yt-search');
+    const axios = require('axios');
+
+    if (!args.join(" ")) {
+        return await socket.sendMessage(sender, { text: "❌ කරුණාකර වීඩියෝවේ නම හෝ Link එක ලබා දෙන්න." }, { quoted: msg });
+    }
+
+    await socket.sendMessage(sender, { react: { text: "📽️", key: msg.key } });
+    await socket.sendMessage(sender, { text: "🔍 *Searching for your video...*" }, { quoted: msg });
+
+    try {
+        const search = await yts(args.join(" "));
+        const video = search.videos[0];
+
+        if (!video) {
+            return await socket.sendMessage(sender, { text: "❌ කිසිදු ප්‍රතිඵලයක් හමු නොවීය." }, { quoted: msg });
+        }
+
+        let desc = `🎬 *DTEC MINI VIDEO DOWNLOADER* 🎬\n\n`;
+        desc += `📌 *Title:* ${video.title}\n`;
+        desc += `⏱️ *Duration:* ${video.timestamp}\n`;
+        desc += `👁️ *Views:* ${video.views}\n`;
+        desc += `🔗 *Link:* ${video.url}\n\n`;
+        desc += `> 📥 *Downloading Video... Please wait.*`;
+
+        await socket.sendMessage(sender, { 
+            image: { url: video.thumbnail }, 
+            caption: desc 
+        }, { quoted: msg });
+
+        // API එක හරහා Video ලින්ක් එක ගන්නවා
+        const apiUrl = `https://api.davidcyriltech.my.id/download/ytmp4?url=${video.url}`;
+        const response = await axios.get(apiUrl);
+
+        if (response.data && response.data.result && response.data.result.download_url) {
+            const downloadUrl = response.data.result.download_url;
+
+            // Video එක යවනවා
+            await socket.sendMessage(sender, { 
+                video: { url: downloadUrl }, 
+                mimetype: 'video/mp4',
+                fileName: `${video.title}.mp4`,
+                caption: `🎬 *${video.title}*\n\n> © 🐦‍🔥 ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1 🐦‍🔥`
+            }, { quoted: msg });
+
+            await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+
+        } else {
+            await socket.sendMessage(sender, { text: "❌ ඩවුන්ලෝඩ් කිරීමේ දෝෂයක් ඇති විය." }, { quoted: msg });
+        }
+
+    } catch (e) {
+        console.log(e);
+        await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg });
+    }
+    break;
+}
+
           case 'ts': {
             // ... (Your existing TS command code) ...
              const axios = require('axios');
