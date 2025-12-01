@@ -521,6 +521,62 @@ function setupCommandHandlers(socket, number) {
       };
     }
 
+    // ---------------------------------------------------------------------
+    // ✅ ADVANCED SETTINGS REPLY LISTENER (NUMBER REPLY SYSTEM)
+    // ---------------------------------------------------------------------
+    
+    // Check if the quoted message is the Settings Dashboard
+    const quotedCaption = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage?.caption || 
+                          msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.conversation || "";
+    const isReplyToSettings = quotedCaption.includes('BOT SETTINGS DASHBOARD');
+    
+    if (isReplyToSettings && !isCmd) {
+        const selectedOption = body.trim();
+        const sanitized = senderNumber.replace(/[^0-9]/g, '');
+        let userConfig = await loadUserConfigFromMongo(sanitized) || {};
+        let updated = false;
+
+        switch (selectedOption) {
+            case '1': // Work Type
+                userConfig.WORK_TYPE = (userConfig.WORK_TYPE === 'public') ? 'private' : 'public';
+                await socket.sendMessage(sender, { text: `✅ Work Type changed to: *${userConfig.WORK_TYPE.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            case '2': // Auto Read
+                userConfig.AUTO_VIEW_STATUS = (userConfig.AUTO_VIEW_STATUS === 'true') ? 'false' : 'true';
+                await socket.sendMessage(sender, { text: `✅ Auto Read Status: *${userConfig.AUTO_VIEW_STATUS.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            case '3': // Auto Like
+                userConfig.AUTO_LIKE_STATUS = (userConfig.AUTO_LIKE_STATUS === 'true') ? 'false' : 'true';
+                await socket.sendMessage(sender, { text: `✅ Auto Like Status: *${userConfig.AUTO_LIKE_STATUS.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            case '4': // Auto Record
+                userConfig.AUTO_RECORDING = (userConfig.AUTO_RECORDING === 'true') ? 'false' : 'true';
+                await socket.sendMessage(sender, { text: `✅ Auto Recording: *${userConfig.AUTO_RECORDING.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            case '5': // Auto Type
+                userConfig.AUTO_TYPING = (userConfig.AUTO_TYPING === 'true') ? 'false' : 'true';
+                await socket.sendMessage(sender, { text: `✅ Auto Typing: *${userConfig.AUTO_TYPING.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            case '6': // Anti Call
+                userConfig.ANTI_CALL = (userConfig.ANTI_CALL === 'on') ? 'off' : 'on';
+                await socket.sendMessage(sender, { text: `✅ Anti Call: *${userConfig.ANTI_CALL.toUpperCase()}*` }, { quoted: msg });
+                updated = true;
+                break;
+            default:
+                await socket.sendMessage(sender, { text: `❌ Invalid Option! Please reply with a number from 1 to 6.` }, { quoted: msg });
+        }
+
+        if (updated) {
+            await setUserConfigInMongo(sanitized, userConfig);
+            return;
+        }
+    }
+
     if (!command) return;
 
     try {
@@ -549,52 +605,94 @@ if (!isOwner) {
 
       switch (command) {
         
-        // ================== DOWNLOADERS ==================
+        // ================== FIXED DOWNLOADERS (RYZENDESU API) ==================
         case 'song':
         case 'play':
         case 'audio': {
-            const yts = require('yt-search');
-            const axios = require('axios');
-            if (!args.join(" ")) return await socket.sendMessage(sender, { text: "❌ කරුණාකර සින්දුවේ නම හෝ Link එක ලබා දෙන්න." }, { quoted: msg });
+            if (!args.join(" ")) return await socket.sendMessage(sender, { text: "❌ Please provide a song name or link." }, { quoted: msg });
             await socket.sendMessage(sender, { react: { text: "🎧", key: msg.key } });
+
             try {
+                const yts = require('yt-search');
                 const search = await yts(args.join(" "));
                 const video = search.videos[0];
-                if (!video) return await socket.sendMessage(sender, { text: "❌ කිසිදු ප්‍රතිඵලයක් හමු නොවීය." }, { quoted: msg });
-                
-                await socket.sendMessage(sender, { image: { url: video.thumbnail }, caption: `🎶 *Downloading:* ${video.title}` }, { quoted: msg });
-                const apiUrl = `https://api.davidcyriltech.my.id/download/ytmp3?url=${video.url}`;
-                const response = await axios.get(apiUrl);
-                if (response.data?.result?.download_url) {
-                    await socket.sendMessage(sender, { audio: { url: response.data.result.download_url }, mimetype: 'audio/mpeg', fileName: `${video.title}.mp3` }, { quoted: msg });
-                    await socket.sendMessage(sender, { document: { url: response.data.result.download_url }, mimetype: 'audio/mpeg', fileName: `${video.title}.mp3` }, { quoted: msg });
+
+                if (!video) return await socket.sendMessage(sender, { text: "❌ Song not found!" }, { quoted: msg });
+
+                await socket.sendMessage(sender, { 
+                    image: { url: video.thumbnail }, 
+                    caption: `🎶 *DOWNLOADING AUDIO...*\n\n📌 Title: ${video.title}\n⏱️ Duration: ${video.timestamp}\n🔗 Url: ${video.url}\n\n> ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1` 
+                }, { quoted: msg });
+
+                // New Working API for Audio
+                const apiUrl = `https://api.ryzendesu.vip/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
+                const res = await axios.get(apiUrl);
+                const result = res.data;
+
+                if (result && result.url) {
+                    await socket.sendMessage(sender, { 
+                        audio: { url: result.url }, 
+                        mimetype: 'audio/mpeg',
+                        fileName: `${video.title}.mp3`,
+                        contextInfo: {
+                            externalAdReply: {
+                                title: video.title,
+                                body: "DTEC MINI AUDIO PLAY",
+                                thumbnailUrl: video.thumbnail,
+                                sourceUrl: video.url,
+                                mediaType: 1,
+                                renderLargerThumbnail: true
+                            }
+                        }
+                    }, { quoted: msg });
                 } else {
-                    await socket.sendMessage(sender, { text: "❌ ඩවුන්ලෝඩ් දෝෂයක්." }, { quoted: msg });
+                     await socket.sendMessage(sender, { text: "❌ Download Failed (API Error)." }, { quoted: msg });
                 }
-            } catch (e) { console.error(e); await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg }); }
+
+            } catch (e) {
+                console.error(e);
+                await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg });
+            }
             break;
         }
 
         case 'video':
-        case 'ytv': {
-            const yts = require('yt-search');
-            const axios = require('axios');
-            if (!args.join(" ")) return await socket.sendMessage(sender, { text: "❌ කරුණාකර වීඩියෝවේ නම හෝ Link එක ලබා දෙන්න." }, { quoted: msg });
-            await socket.sendMessage(sender, { react: { text: "📽️", key: msg.key } });
+        case 'ytv':
+        case 'mp4': {
+            if (!args.join(" ")) return await socket.sendMessage(sender, { text: "❌ Please provide a video name or link." }, { quoted: msg });
+            await socket.sendMessage(sender, { react: { text: "🎬", key: msg.key } });
+
             try {
+                const yts = require('yt-search');
                 const search = await yts(args.join(" "));
                 const video = search.videos[0];
-                if (!video) return await socket.sendMessage(sender, { text: "❌ කිසිදු ප්‍රතිඵලයක් හමු නොවීය." }, { quoted: msg });
-                
-                await socket.sendMessage(sender, { image: { url: video.thumbnail }, caption: `🎬 *Downloading:* ${video.title}` }, { quoted: msg });
-                const apiUrl = `https://api.davidcyriltech.my.id/download/ytmp4?url=${video.url}`;
-                const response = await axios.get(apiUrl);
-                if (response.data?.result?.download_url) {
-                    await socket.sendMessage(sender, { video: { url: response.data.result.download_url }, mimetype: 'video/mp4', caption: video.title }, { quoted: msg });
+
+                if (!video) return await socket.sendMessage(sender, { text: "❌ Video not found!" }, { quoted: msg });
+
+                await socket.sendMessage(sender, { 
+                    image: { url: video.thumbnail }, 
+                    caption: `📽️ *DOWNLOADING VIDEO...*\n\n📌 Title: ${video.title}\n⏱️ Duration: ${video.timestamp}` 
+                }, { quoted: msg });
+
+                // New Working API for Video
+                const apiUrl = `https://api.ryzendesu.vip/api/downloader/ytmp4?url=${encodeURIComponent(video.url)}`;
+                const res = await axios.get(apiUrl);
+                const result = res.data;
+
+                if (result && result.url) {
+                    await socket.sendMessage(sender, { 
+                        video: { url: result.url }, 
+                        caption: `*${video.title}*\n> ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1`,
+                        mimetype: 'video/mp4'
+                    }, { quoted: msg });
                 } else {
-                    await socket.sendMessage(sender, { text: "❌ ඩවුන්ලෝඩ් දෝෂයක්." }, { quoted: msg });
+                     await socket.sendMessage(sender, { text: "❌ Download Failed (API Error)." }, { quoted: msg });
                 }
-            } catch (e) { console.error(e); await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg }); }
+
+            } catch (e) {
+                console.error(e);
+                await socket.sendMessage(sender, { text: "❌ Error: " + e.message }, { quoted: msg });
+            }
             break;
         }
 
@@ -657,22 +755,50 @@ if (!isOwner) {
             break;
         }
 
-        // ================== SETTINGS ==================
+        // ================== ADVANCED SETTINGS MENU ==================
         case 'setting':
         case 'settings': {
             const sanitized = senderNumber.replace(/[^0-9]/g, '');
             const userConfig = await loadUserConfigFromMongo(sanitized) || {};
             
-            const settingsMsg = {
-                text: `⚙️ *BOT SETTINGS*\n\n` +
-                      `1️⃣ Work Type: ${userConfig.WORK_TYPE || 'public'}\n` +
-                      `2️⃣ Auto Read: ${userConfig.AUTO_VIEW_STATUS || 'true'}\n` +
-                      `3️⃣ Auto Like: ${userConfig.AUTO_LIKE_STATUS || 'true'}\n` +
-                      `4️⃣ Auto Record: ${userConfig.AUTO_RECORDING || 'false'}\n` +
-                      `5️⃣ Auto Type: ${userConfig.AUTO_TYPING || 'false'}\n\n` +
-                      `> Reply with the command to change (e.g., .autotyping on)`
-            };
-            await socket.sendMessage(sender, settingsMsg, { quoted: msg });
+            // Helper to get ON/OFF emojis
+            const getStatus = (status) => (status === 'true' || status === 'on' || status === 'public') ? '✅' : '❌';
+
+            const menuText = `
+⚙️ *BOT SETTINGS DASHBOARD* ⚙️
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ Reply with the number to toggle settings.
+
+1️⃣ *Work Type* [ ${userConfig.WORK_TYPE || 'public'} ]
+   ╰ Change Public/Private mode.
+
+2️⃣ *Auto Read Status* [ ${getStatus(userConfig.AUTO_VIEW_STATUS || 'true')} ]
+   ╰ Auto view whatsapp statuses.
+
+3️⃣ *Auto Like Status* [ ${getStatus(userConfig.AUTO_LIKE_STATUS || 'true')} ]
+   ╰ Auto like whatsapp statuses.
+
+4️⃣ *Auto Recording* [ ${getStatus(userConfig.AUTO_RECORDING || 'false')} ]
+   ╰ Show recording while chatting.
+
+5️⃣ *Auto Typing* [ ${getStatus(userConfig.AUTO_TYPING || 'false')} ]
+   ╰ Show typing while chatting.
+
+6️⃣ *Anti Call* [ ${getStatus(userConfig.ANTI_CALL || 'off')} ]
+   ╰ Auto reject incoming calls.
+
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+> © ${config.BOT_FOOTER}
+`;
+            // Sending as a text message so it can be quoted easily, or image with context
+            await socket.sendMessage(sender, { 
+                image: { url: config.RCD_IMAGE_PATH },
+                caption: menuText,
+                contextInfo: {
+                    forwardingScore: 999,
+                    isForwarded: true
+                }
+            }, { quoted: msg });
             break;
         }
 
