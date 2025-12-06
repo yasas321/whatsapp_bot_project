@@ -53,7 +53,7 @@ const config = {
 // ---------------- MONGO SETUP ----------------
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://botmini:botmini@minibot.upglk0f.mongodb.net/?retryWrites=true&w=majority';
-const MONGO_DB = process.env.MONGO_DB || 'DTEC_MINI';
+const MONGO_DB = process.env.MONGO_DB || 'DTEEC_MINI';
 
 let mongoClient, mongoDB;
 let sessionsCol, numbersCol, adminsCol, newsletterCol, configsCol, newsletterReactsCol;
