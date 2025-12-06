@@ -19,6 +19,7 @@
     "pino": "^8.17.0",
     "jimp": "^1.6.0",
     "sharp": "^0.32.6",
+    "mongodb": "^5.7.0",
     "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
     "@octokit/rest": "^20.0.2",
