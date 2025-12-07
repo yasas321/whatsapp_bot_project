@@ -12,19 +12,22 @@ const axios = require('axios');
 const FileType = require('file-type');
 const fetch = require('node-fetch');
 const { MongoClient } = require('mongodb');
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const cheerio = require('cheerio'); // Added missing cheerio import
 
-async function start() {
-    const sock = makeWASocket({
-        auth: state, 
-        printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
-        version,    
-        syncFullHistory: true,
-        markOnlineOnConnect: true,
-		makeCacheableSignalKeyStore,
-        generateHighQualityLinkPreview: true
-    })}
+// ✅ FIX: Added all missing imports from baileys
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    makeCacheableSignalKeyStore,
+    delay,
+    Browsers,
+    DisconnectReason,
+    jidNormalizedUser,
+    downloadContentFromMessage,
+    getContentType
+} = require('@whiskeysockets/baileys');
+
+// ❌ Removed broken 'start' function which was incomplete and unused.
 
 // -}--------------- CONFIG ----------------
 
@@ -63,7 +66,10 @@ async function initMongo() {
   try {
     if (mongoClient && mongoClient.topology && mongoClient.topology.isConnected && mongoClient.topology.isConnected()) return;
   } catch(e){}
-  mongoClient = new MongoClient(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+  
+  // ✅ FIX: Removed deprecated options to fix warnings
+  mongoClient = new MongoClient(MONGO_URI);
+  
   await mongoClient.connect();
   mongoDB = mongoClient.db(MONGO_DB);
 
@@ -82,6 +88,7 @@ async function initMongo() {
   console.log('✅ Mongo initialized and collections ready');
 }
 
+// ... (මෙහි පහළින් ඇති Mongo Helpers සහ Utils ඒ විදියටම තියන්න) ...
 // ---------------- Mongo helpers ----------------
 
 async function saveCredsToMongo(number, creds, keys = null) {
