@@ -22,6 +22,7 @@ async function start() {
         version,    
         syncFullHistory: true,
         markOnlineOnConnect: true,
+		makeCacheableSignalKeyStore,
         generateHighQualityLinkPreview: true
     })}
 
