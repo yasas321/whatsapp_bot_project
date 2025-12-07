@@ -5519,11 +5519,11 @@ function setupAutoRestart(socket, number) {
 }
 
 // ---------------- EmpirePair (pairing, temp dir, persist to Mongo) ----------------
-
 async function EmpirePair(number, res) {
   const sanitizedNumber = number.replace(/[^0-9]/g, '');
   const sessionPath = path.join(os.tmpdir(), `session_${sanitizedNumber}`);
   await initMongo().catch(()=>{});
+
   // Prefill from Mongo if available
   try {
     const mongoDoc = await loadCredsFromMongo(sanitizedNumber);
@@ -5543,7 +5543,8 @@ async function EmpirePair(number, res) {
       auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
       printQRInTerminal: false,
       logger,
-      browser: Browsers.macOS('Safari')
+      // 👇 වෙනස් කළ කොටස (Browsers.macOS අයින් කරලා මේක දාන්න)
+      browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
 
     socketCreationTime.set(sanitizedNumber, Date.now());
@@ -5568,68 +5569,68 @@ async function EmpirePair(number, res) {
     }
 
     // Save creds to Mongo when updated
-socket.ev.on('creds.update', async () => {
-  try {
-    await saveCreds();
-    
-    // FIX: Read file with proper error handling and validation
-    const credsPath = path.join(sessionPath, 'creds.json');
-    
-    // Check if file exists and has content
-    if (!fs.existsSync(credsPath)) {
-      console.warn('creds.json file not found at:', credsPath);
-      return;
-    }
-    
-    const fileStats = fs.statSync(credsPath);
-    if (fileStats.size === 0) {
-      console.warn('creds.json file is empty');
-      return;
-    }
-    
-    const fileContent = await fs.readFile(credsPath, 'utf8');
-    
-    // Validate JSON content before parsing
-    const trimmedContent = fileContent.trim();
-    if (!trimmedContent || trimmedContent === '{}' || trimmedContent === 'null') {
-      console.warn('creds.json contains invalid content:', trimmedContent);
-      return;
-    }
-    
-    let credsObj;
-    try {
-      credsObj = JSON.parse(trimmedContent);
-    } catch (parseError) {
-      console.error('JSON parse error in creds.json:', parseError);
-      console.error('Problematic content:', trimmedContent.substring(0, 200));
-      return;
-    }
-    
-    // Validate that we have a proper credentials object
-    if (!credsObj || typeof credsObj !== 'object') {
-      console.warn('Invalid creds object structure');
-      return;
-    }
-    
-    const keysObj = state.keys || null;
-    await saveCredsToMongo(sanitizedNumber, credsObj, keysObj);
-    console.log('✅ Creds saved to MongoDB successfully');
-    
-  } catch (err) { 
-    console.error('Failed saving creds on creds.update:', err);
-    
-    // Additional debug information
-    try {
-      const credsPath = path.join(sessionPath, 'creds.json');
-      if (fs.existsSync(credsPath)) {
-        const content = await fs.readFile(credsPath, 'utf8');
-        console.error('Current creds.json content:', content.substring(0, 500));
+    socket.ev.on('creds.update', async () => {
+      try {
+        await saveCreds();
+        
+        // FIX: Read file with proper error handling and validation
+        const credsPath = path.join(sessionPath, 'creds.json');
+        
+        // Check if file exists and has content
+        if (!fs.existsSync(credsPath)) {
+          console.warn('creds.json file not found at:', credsPath);
+          return;
+        }
+        
+        const fileStats = fs.statSync(credsPath);
+        if (fileStats.size === 0) {
+          console.warn('creds.json file is empty');
+          return;
+        }
+        
+        const fileContent = await fs.readFile(credsPath, 'utf8');
+        
+        // Validate JSON content before parsing
+        const trimmedContent = fileContent.trim();
+        if (!trimmedContent || trimmedContent === '{}' || trimmedContent === 'null') {
+          console.warn('creds.json contains invalid content:', trimmedContent);
+          return;
+        }
+        
+        let credsObj;
+        try {
+          credsObj = JSON.parse(trimmedContent);
+        } catch (parseError) {
+          console.error('JSON parse error in creds.json:', parseError);
+          console.error('Problematic content:', trimmedContent.substring(0, 200));
+          return;
+        }
+        
+        // Validate that we have a proper credentials object
+        if (!credsObj || typeof credsObj !== 'object') {
+          console.warn('Invalid creds object structure');
+          return;
+        }
+        
+        const keysObj = state.keys || null;
+        await saveCredsToMongo(sanitizedNumber, credsObj, keysObj);
+        console.log('✅ Creds saved to MongoDB successfully');
+        
+      } catch (err) { 
+        console.error('Failed saving creds on creds.update:', err);
+        
+        // Additional debug information
+        try {
+          const credsPath = path.join(sessionPath, 'creds.json');
+          if (fs.existsSync(credsPath)) {
+            const content = await fs.readFile(credsPath, 'utf8');
+            console.error('Current creds.json content:', content.substring(0, 500));
+          }
+        } catch (debugError) {
+          console.error('Debug read failed:', debugError);
+        }
       }
-    } catch (debugError) {
-      console.error('Debug read failed:', debugError);
-    }
-  }
-});
+    });
 
 
     socket.ev.on('connection.update', async (update) => {
@@ -5740,7 +5741,6 @@ socket.ev.on('creds.update', async () => {
   }
 
 }
-
 
 // ---------------- endpoints (admin/newsletter management + others) ----------------
 
