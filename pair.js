@@ -12,17 +12,15 @@ const axios = require('axios');
 const FileType = require('file-type');
 const fetch = require('node-fetch');
 const { MongoClient } = require('mongodb');
-
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  delay,
-  getContentType,
-  makeCacheableSignalKeyStore,
-  Browsers,
-  jidNormalizedUser,
-  downloadContentFromMessage,
-  DisconnectReason
+const sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      logger: pino({ level: "silent" }),
+      version,
+      syncFullHistory: true,
+      markOnlineOnConnect: true,
+      generateHighQualityLinkPreview: true
+    
 } = require('@whiskeysockets/baileys');
 
 // ---------------- CONFIG ----------------
