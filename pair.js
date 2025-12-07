@@ -23,7 +23,7 @@ const {
     prepareWAMessageMedia,
     generateWAMessageFromContent,
     S_WHATSAPP_NET
-} = require('baileys');
+} = require('@whiskeysockets/baileys');
 
 const FIREBASE_URL = 'https://minibotproject2-default-rtdb.asia-southeast1.firebasedatabase.app';
 
