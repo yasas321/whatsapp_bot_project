@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec } = require('child_process'); 
 const router = express.Router();
 const pino = require('pino');
 const moment = require('moment-timezone');
@@ -12,18 +12,20 @@ const axios = require('axios');
 const FileType = require('file-type');
 const fetch = require('node-fetch');
 const { MongoClient } = require('mongodb');
-const sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      logger: pino({ level: "silent" }),
-      version,
-      syncFullHistory: true,
-      markOnlineOnConnect: true,
-      generateHighQualityLinkPreview: true
-    
-} = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 
-// ---------------- CONFIG ----------------
+async function start() {
+    const sock = makeWASocket({
+        auth: state, 
+        printQRInTerminal: false,
+        logger: pino({ level: "silent" }),
+        version,    
+        syncFullHistory: true,
+        markOnlineOnConnect: true,
+        generateHighQualityLinkPreview: true
+    })}
+
+// -}--------------- CONFIG ----------------
 
 const BOT_NAME_FANCY = '🐦‍🔥 ᴅᴛᴇᴄ ᴍɪɴɪ ᴠ1 🐦‍🔥';
 
